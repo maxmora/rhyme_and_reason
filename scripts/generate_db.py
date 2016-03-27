@@ -1,6 +1,6 @@
 #!/bin/env python3
 
-# parse file and migrate data into an SQLite database file
+# parse CMU Pronunciation Dictionary file and migrate data into an SQLite database file
 
 import parse
 import sqlite3
