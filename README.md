@@ -1,6 +1,8 @@
 # Rhyme and Reason
 
-Rhyme and Reason is a searchable phonological/rhyming dictionary with a Flask-based REST API. The respository also includes scripts to convert data from the CMU Pronouncing Dictionary to a format based on that used in the dictionary formerly at http://lexicon.arizona.edu/~hammond/newdic.html.
+Rhyme and Reason is a searchable phonological/rhyming dictionary with a Bottle-based REST API. The respository also includes scripts to convert data from the CMU Pronouncing Dictionary to a format based on that used in the dictionary formerly at http://lexicon.arizona.edu/~hammond/newdic.html.
+
+Other fuctionality is being implemented for analysis of poetic rhyme schemes and metrics.
 
 # API Overview
 
