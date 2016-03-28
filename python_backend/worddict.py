@@ -39,34 +39,10 @@ class WordDict:
             all_results.extend(results)
         return [self.rowAsDict(r) for r in all_results]
 
-    def getRhymeScheme(self,word_spellings):
-        '''Return alpha rhyme scheme.'''
-
-        # get rhyme of each last word
-        tr = Transcriptions()
-        rhymes = []
-        for sp in word_spellings:
-            word_data = self.findSpelling(sp)[0] # only take the first result; TODO handle this in a more sophisticated fasion, checking all possible ones, perhaps
-            rhymes.append(tr.getRhyme(word_data['transcription'],word_data['stress']))
-        rhyme_scheme = ''
-        i = 1
-        seen = {}
-        for r in rhymes:
-            if r in seen.keys():
-                rhyme_scheme += str(seen[r])
-            else:
-                seen[r] = i
-                rhyme_scheme += str(i)
-                i += 1
-        # return in alpha format, offsetting 'A' by n-1 where n is the integer rhyme scheme representation of the word
-        # TODO do this with a more sophisticated function, where overrunning Z goes to AA or something; will allow analysis
-        # of texts of arbitrary length
-        return ''.join(chr(int(n-1) + ord('A')) for n in rhyme_scheme)
-
 class Transcriptions:
     hammond_vowels = ['a', '@', 'x', 'c', 'W', 'Y', 'E', 'R', 'e', 'I', 'i', 'o', 'O', 'U', 'u']
 
-    def getMainStressIndex(self,stress):
+    def _getMainStressIndex(self,stress):
         '''Get the index of the main stress '1' in the stress string. This is equivalent to the
            main stressed syllable (Nth-1).'''
         i = 0
@@ -76,7 +52,7 @@ class Transcriptions:
             i += 1
         return None
 
-    def getNthVowelIndex(self,transcription,syl_num):
+    def _getNthVowelIndex(self,transcription,syl_num):
         '''Return the index of the N-1th (that is, syl_num) vowel in the transcription string.'''
         i = 0
         syl = 0
@@ -90,8 +66,8 @@ class Transcriptions:
     def getRhyme(self,transcription,stress):
         '''Return the segments that make the up the rhyme of the word (all segments from main
            stress onwards.'''
-        main_stress_i = self.getMainStressIndex(stress)
-        start_of_rhyme = self.getNthVowelIndex(transcription,main_stress_i)
+        main_stress_i = self._getMainStressIndex(stress)
+        start_of_rhyme = self._getNthVowelIndex(transcription,main_stress_i)
         return transcription[start_of_rhyme:]
 
     def isRhymeMainStressed(self,rhyme,test_word_dict):
@@ -109,25 +85,56 @@ class Transcriptions:
 
 class Text:
     '''Represents the text to be analyzed.'''
-    def __init__(self,text):
+    def __init__(self,text,word_dict,tr=Transcriptions()):
         self.text = text
+        self.lines = self._makeCleanedLines()
+        self.word_dict = word_dict
+        self.tr = tr
 
-    def getCleanedLines(self):
+    def _makeCleanedLines(self):
         # TODO go through self.text, clean up punctuation etc., and return list of lines
-        pass
+        return self.text.splitlines()
 
-    def getLastWords(self,lines):
+    def _getLastWords(self):
         '''Split on spaces and return a list of the last word of each line.'''
         last_words = []
-        for l in lines:
+        for l in self.lines:
             last_words.append(l.split()[-1])
         return last_words
 
-    # TODO move WordDict.getRhymeScheme() to Text class and refactor
-    def getRhymeSchem():
-        pass
+    def _alphafyNumericRhymeScheme(self,numeric_rhyme_scheme):
+        '''Take numeric representation (e.g., '1212') of rhyme scheme and convert to alpha ('ABAB').'''
+        # TODO do this in a smarter way, so that overrunning Z goes to AA or something as to allow analysis
+        # of texts of arbitrary length
+        return ''.join(chr(int(n)-1 + ord('A')) for n in numeric_rhyme_scheme)
+
+    def _getRhymeSchemeFromWords(self,word_spellings):
+        '''Generate a numeric rhyme scheme from a a list of words.'''
+        # get rhyme of each last word
+        rhymes = []
+        for sp in word_spellings:
+            word_data = self.word_dict.findSpelling(sp)[0] # only take the first result; TODO handle this in a more sophisticated fasion, checking all possible ones, perhaps
+            rhymes.append(self.tr.getRhyme(word_data['transcription'],word_data['stress']))
+        rhyme_scheme = ''
+        i = 1
+        seen = {}
+        for r in rhymes:
+            if r in seen.keys():
+                rhyme_scheme += str(seen[r])
+            else:
+                seen[r] = i
+                rhyme_scheme += str(i)
+                i += 1
+        return rhyme_scheme
+
+    def getRhymeScheme(self):
+        '''Return alpha rhyme scheme.'''
+        last_words = self._getLastWords()
+        rhyme_scheme = self._getRhymeSchemeFromWords(last_words)
+        return self._alphafyNumericRhymeScheme(rhyme_scheme)
 
 # only intended to be used interactively for testing
 if __name__ == '__main__':
-    d = WordDict('../db/english_dict.db')
-
+    wd = WordDict('../db/english_dict.db')
+    poem_text = 'these are the words\nthey are for the birds\nA few just might rhyme\nif they don\'t it\'s no crime'
+    t = Text(poem_text,wd)
