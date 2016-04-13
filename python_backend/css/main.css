@@ -1,0 +1,28 @@
+body {
+    background: lightgray;
+}
+
+.list_container div {
+    background-color: pink;
+    border: .2em solid red;
+    border-radius: .2em 1em .2em 1em;
+    width: 30%;
+}
+
+.item_list li {
+    background-color: black;
+    border: .2em solid red;
+    border-radius: .2em 1em .2em 1em;
+    color: white;
+    list-style-type: none;
+    margin: .2em;
+    padding: .5em;
+    width: 93%;
+}
+
+div.scheme_letter {
+    background-color: blue;
+    float: right;
+    text-align: center;
+    width: 2em;
+}

@@ -1,12 +1,13 @@
 # Provides the WordDict class as a database abstraction for accessing pronunciation data
 import sqlite3
+import string
 
 class WordDict:
     def __init__(self,db_file):
         self.connection = sqlite3.connect(db_file)
         self.conn_cursor = self.connection.cursor()
 
-    def rowAsDict(self,row):
+    def _rowAsDict(self,row):
         d = {}
         for idx, col in enumerate(self.conn_cursor.description):
             d[col[0]] = row[idx]
@@ -17,12 +18,12 @@ class WordDict:
         spelling_tuple = (sp,)
         results = self.conn_cursor.execute("SELECT * FROM words WHERE spelling=?;",spelling_tuple)
         #return [r for r in results]
-        return [self.rowAsDict(r) for r in results]
+        return [self._rowAsDict(r) for r in results]
 
     def findTranscription(self,tr):
         trans_tuple = (tr,)
         results = self.conn_cursor.execute("SELECT * FROM words WHERE transcription=?;",trans_tuple)
-        return [self.rowAsDict(r) for r in results]
+        return [self._rowAsDict(r) for r in results]
 
     # TODO this should check that the RESULTS have the primary stress in the right place, or else e.g.,
     # "tree" would rhyme with "pretty" and such.
@@ -34,10 +35,11 @@ class WordDict:
             query_tuple = ('*' + rhyme_segs,w['spelling'])
             rhyme_seg_matches = self.conn_cursor.execute("SELECT * FROM words WHERE transcription GLOB ? AND spelling != ?;",query_tuple)
             # only keeps results if the rhyme in the match actually has main stress on the first vowel
-            results = [rh for rh in rhyme_seg_matches if trans.isRhymeMainStressed(rhyme_segs,self.rowAsDict(rh))]
+            results = [rh for rh in rhyme_seg_matches if trans.isRhymeMainStressed(rhyme_segs,self._rowAsDict(rh))]
 
             all_results.extend(results)
-        return [self.rowAsDict(r) for r in all_results]
+        return [self._rowAsDict(r) for r in all_results]
+
 
 class Transcriptions:
     hammond_vowels = ['a', '@', 'x', 'c', 'W', 'Y', 'E', 'R', 'e', 'I', 'i', 'o', 'O', 'U', 'u']
@@ -75,8 +77,7 @@ class Transcriptions:
            vowel of the rhyme is main stressed in the test word, otherwise return False.'''
         # count vowels in rhyme string
         rhyme_vowel_count = sum(1 for c in rhyme if c in self.hammond_vowels)
-        # if that number of vowels back in the stress string is main stress, then rhyme started
-        # with main stress
+        # if that number of vowels back in the stress string is main stress, then rhyme started with main stress
         if test_word_dict['stress'][-rhyme_vowel_count] == '1':
             return True
         else:
@@ -87,18 +88,23 @@ class Text:
     '''Represents the text to be analyzed.'''
     def __init__(self,text,word_dict,tr=Transcriptions()):
         self.text = text
-        self.lines = self._makeCleanedLines()
+        self.lines_raw = text.splitlines()
+        self.lines_cleaned = self._makeCleanedLines()
         self.word_dict = word_dict
         self.tr = tr
 
     def _makeCleanedLines(self):
-        # TODO go through self.text, clean up punctuation etc., and return list of lines
-        return self.text.splitlines()
+        lines = self.text.splitlines()
+        cleaned_lines = []
+        # ditch punctuation, numbers, and other things
+        for L in lines:
+            cleaned_lines.append(''.join(c for c in L if c in string.ascii_letters + string.whitespace))
+        return cleaned_lines
 
     def _getLastWords(self):
         '''Split on spaces and return a list of the last word of each line.'''
         last_words = []
-        for l in self.lines:
+        for l in self.lines_cleaned:
             last_words.append(l.split()[-1])
         return last_words
 
@@ -113,6 +119,7 @@ class Text:
         # get rhyme of each last word
         rhymes = []
         for sp in word_spellings:
+            # TODO do something to handle words that aren't in the dictionary; approximate pronunciation/syllables?
             word_data = self.word_dict.findSpelling(sp)[0] # only take the first result; TODO handle this in a more sophisticated fasion, checking all possible ones, perhaps
             rhymes.append(self.tr.getRhyme(word_data['transcription'],word_data['stress']))
         rhyme_scheme = ''
@@ -127,14 +134,30 @@ class Text:
                 i += 1
         return rhyme_scheme
 
-    def getRhymeScheme(self):
+    def _scanLine(self,line,foot_type):
+        '''Scan a line for a given foot type (notated s=strong, w=weak) and return discrepancies.'''
+        # TODO implement
+        pass
+
+    def _getRhymeScheme(self):
         '''Return alpha rhyme scheme.'''
         last_words = self._getLastWords()
         rhyme_scheme = self._getRhymeSchemeFromWords(last_words)
         return self._alphafyNumericRhymeScheme(rhyme_scheme)
 
+    def getRhymeSchemeAnnotatedLines(self):
+        '''Return a list of dictionaries {line_text, rhyme_word, scheme_letter} corresponding to each line'''
+        annotated_lines = []
+        for i in range(len(self.lines_raw)):
+            line_dict = {}
+            line_dict['line_text'] = self.lines_raw[i]
+            line_dict['rhyme_word'] = self._getLastWords()[i]
+            line_dict['scheme_letter'] = self._getRhymeScheme()[i]
+            annotated_lines.append(line_dict)
+        return annotated_lines
+
 # only intended to be used interactively for testing
 if __name__ == '__main__':
     wd = WordDict('../db/english_dict.db')
-    poem_text = 'these are the words\nthey are for the birds\nA few just might rhyme\nif they don\'t it\'s no crime'
+    poem_text = 'to walk into the room\nand sense impending doom\nabout to come and see\na feeling fresh and free'
     t = Text(poem_text,wd)
