@@ -88,17 +88,28 @@ class Text:
     '''Represents the text to be analyzed.'''
     def __init__(self,text,word_dict,tr=Transcriptions()):
         self.text = text
-        self.lines_raw = text.splitlines()
+        self.lines_raw = self._splitRawLines()
         self.lines_cleaned = self._makeCleanedLines()
         self.word_dict = word_dict
         self.tr = tr
 
-    def _makeCleanedLines(self):
+    def _splitRawLines(self):
         lines = self.text.splitlines()
+        # ditch whitespace-only or blank empty lines
+        non_blank_lines = []
+        for L in lines:
+            if not (L.isspace() or L == ''):
+                non_blank_lines.append(L)
+        return non_blank_lines
+        
+
+    def _makeCleanedLines(self):
+        lines = self.lines_raw
         cleaned_lines = []
         # ditch punctuation, numbers, and other things
         for L in lines:
-            cleaned_lines.append(''.join(c for c in L if c in string.ascii_letters + string.whitespace))
+            cleaned_line = ''.join(c for c in L if c in string.ascii_letters + string.whitespace)
+            cleaned_lines.append(cleaned_line)
         return cleaned_lines
 
     def _getLastWords(self):
@@ -112,20 +123,34 @@ class Text:
         '''Take numeric representation (e.g., '1212') of rhyme scheme and convert to alpha ('ABAB').'''
         # TODO do this in a smarter way, so that overrunning Z goes to AA or something as to allow analysis
         # of texts of arbitrary length
-        return ''.join(chr(int(n)-1 + ord('A')) for n in numeric_rhyme_scheme)
+        alpha_rhyme_scheme = ''
+        for c in numeric_rhyme_scheme:
+            if c == '?':
+                alpha_rhyme_scheme += '?'
+            else:
+                alpha_rhyme_scheme += chr(int(c)-1 + ord('A'))
+        return alpha_rhyme_scheme
 
     def _getRhymeSchemeFromWords(self,word_spellings):
         '''Generate a numeric rhyme scheme from a a list of words.'''
         # get rhyme of each last word
         rhymes = []
         for sp in word_spellings:
+            matched_spellings = self.word_dict.findSpelling(sp)
             # TODO do something to handle words that aren't in the dictionary; approximate pronunciation/syllables?
-            word_data = self.word_dict.findSpelling(sp)[0] # only take the first result; TODO handle this in a more sophisticated fasion, checking all possible ones, perhaps
+            # FIXME for now, just append Nona and move on to the next word
+            if len(matched_spellings) == 0:
+                rhymes.append(None)
+                continue
+            word_data = matched_spellings[0] # only take the first result; TODO handle this in a more sophisticated fasion, checking all possible ones, perhaps
             rhymes.append(self.tr.getRhyme(word_data['transcription'],word_data['stress']))
         rhyme_scheme = ''
         i = 1
         seen = {}
         for r in rhymes:
+            if r is None:
+                rhyme_scheme += '?'
+                continue
             if r in seen.keys():
                 rhyme_scheme += str(seen[r])
             else:
