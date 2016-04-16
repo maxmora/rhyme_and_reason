@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>Make a query</title>
+<title>Analyze a poem's rhyme scheme</title>
 <link rel="stylesheet" type="text/css" href="css/main.css">
 <script src="js/jquery-1.9.0.js"></script>
 
@@ -46,6 +46,7 @@ $(document).ready(function() {
 
 
     $("#submit_poem").click(function() {
+        $("#lines_list").html('Processing...');
         processRhymeScheme($poemTextBox.val());
     });
 });

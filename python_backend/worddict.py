@@ -47,29 +47,25 @@ class Transcriptions:
     def _getMainStressIndex(self,stress):
         '''Get the index of the main stress '1' in the stress string. This is equivalent to the
            main stressed syllable (Nth-1).'''
-        i = 0
-        for s in stress:
-            if s == '1':
+        for i,c in enumerate(stress):
+            if c == '1':
                 return i
-            i += 1
         return None
 
     def _getNthVowelIndex(self,transcription,syl_num):
         '''Return the index of the N-1th (that is, syl_num) vowel in the transcription string.'''
-        i = 0
         syl = 0
-        for c in transcription:
+        for i,c in enumerate(transcription):
             if c in self.hammond_vowels:
                 if syl == syl_num:
                     return i
                 syl += 1
-            i += 1
         
     def getRhyme(self,transcription,stress):
         '''Return the segments that make the up the rhyme of the word (all segments from main
            stress onwards.'''
-        main_stress_i = self._getMainStressIndex(stress)
-        start_of_rhyme = self._getNthVowelIndex(transcription,main_stress_i)
+        main_stress_syl_n = self._getMainStressIndex(stress)
+        start_of_rhyme = self._getNthVowelIndex(transcription,main_stress_syl_n)
         return transcription[start_of_rhyme:]
 
     def isRhymeMainStressed(self,rhyme,test_word_dict):
@@ -132,13 +128,13 @@ class Text:
         return alpha_rhyme_scheme
 
     def _getRhymeSchemeFromWords(self,word_spellings):
-        '''Generate a numeric rhyme scheme from a a list of words.'''
-        # get rhyme of each last word
+        '''Generate a numeric rhyme scheme from a list of words.'''
+        # collect the rhyme of the last word of each line
         rhymes = []
         for sp in word_spellings:
             matched_spellings = self.word_dict.findSpelling(sp)
             # TODO do something to handle words that aren't in the dictionary; approximate pronunciation/syllables?
-            # FIXME for now, just append Nona and move on to the next word
+            # FIXME for now, just append None and move on to the next word
             if len(matched_spellings) == 0:
                 rhymes.append(None)
                 continue
@@ -173,11 +169,11 @@ class Text:
     def getRhymeSchemeAnnotatedLines(self):
         '''Return a list of dictionaries {line_text, rhyme_word, scheme_letter} corresponding to each line'''
         annotated_lines = []
+        rhyme_scheme = self._getRhymeScheme()
         for i in range(len(self.lines_raw)):
             line_dict = {}
             line_dict['line_text'] = self.lines_raw[i]
-            line_dict['rhyme_word'] = self._getLastWords()[i]
-            line_dict['scheme_letter'] = self._getRhymeScheme()[i]
+            line_dict['scheme_letter'] = rhyme_scheme[i]
             annotated_lines.append(line_dict)
         return annotated_lines
 
